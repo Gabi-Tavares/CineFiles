@@ -43,6 +43,36 @@ export function toMovieSummary(
   };
 }
 
+export function parseMovieSummary(value: unknown): MovieSummary | null {
+  if (
+    typeof value !== 'object' ||
+    value === null ||
+    !('id' in value) ||
+    !('title' in value) ||
+    !('poster_path' in value) ||
+    !('release_date' in value) ||
+    !('vote_average' in value) ||
+    !('vote_count' in value) ||
+    typeof value.id !== 'number' ||
+    typeof value.title !== 'string' ||
+    (value.poster_path !== null && typeof value.poster_path !== 'string') ||
+    typeof value.release_date !== 'string' ||
+    typeof value.vote_average !== 'number' ||
+    typeof value.vote_count !== 'number'
+  ) {
+    return null;
+  }
+
+  return {
+    id: value.id,
+    title: value.title,
+    poster_path: value.poster_path,
+    release_date: value.release_date,
+    vote_average: value.vote_average,
+    vote_count: value.vote_count,
+  };
+}
+
 export function isValidRating(rating: number): boolean {
   return (
     Number.isInteger(rating) && rating >= MIN_RATING && rating <= MAX_RATING

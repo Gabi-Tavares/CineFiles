@@ -1,28 +1,16 @@
-/**
- * STUB — responsabilidade do integrante 4 (RF04).
- *
- * O estado vive apenas em memória: ao fechar o aplicativo, a lista é perdida.
- * O contrato público (`FavoritesContextValue` + `useFavorites`) já é o
- * definitivo, então a substituição por AsyncStorage não exige mudança em
- * nenhuma tela. O que falta fazer aqui:
- *
- *   1. carregar `FAVORITES_STORAGE_KEY` em um `useEffect` inicial, alimentando
- *      `isLoading` e `initializationError`;
- *   2. validar o JSON lido (ver `parseAccounts` em `src/auth/AuthContext.tsx`);
- *   3. gravar com `AsyncStorage.setItem` dentro de `toggleFavorite` e
- *      `removeFavorite`, antes de atualizar o estado.
- */
 import {
   createContext,
   ReactNode,
   useCallback,
   useContext,
   useMemo,
-  useState,
 } from 'react';
+import { useAuth } from '../auth/AuthContext';
+import { usePersistentList } from '../hooks/usePersistentList';
 import {
   FavoriteMovie,
   MovieSummary,
+  parseMovieSummary,
   toMovieSummary,
 } from './movieCollection';
 
@@ -32,6 +20,7 @@ export type FavoritesContextValue = {
   favorites: FavoriteMovie[];
   isLoading: boolean;
   initializationError: string | null;
+  retryInitialization: () => void;
   isFavorite: (movieId: number) => boolean;
   toggleFavorite: (movie: MovieSummary) => Promise<void>;
   removeFavorite: (movieId: number) => Promise<void>;
@@ -41,44 +30,92 @@ const FavoritesContext = createContext<FavoritesContextValue | undefined>(
   undefined,
 );
 
+function parseFavorites(value: string | null): FavoriteMovie[] {
+  if (value === null) {
+    return [];
+  }
+
+  const parsed: unknown = JSON.parse(value);
+  if (!Array.isArray(parsed)) {
+    throw new Error('Os favoritos salvos estão inválidos neste dispositivo.');
+  }
+
+  return parsed.flatMap((item: unknown): FavoriteMovie[] => {
+    const summary = parseMovieSummary(item);
+    if (
+      summary === null ||
+      typeof item !== 'object' ||
+      item === null ||
+      !('favoritedAt' in item) ||
+      typeof item.favoritedAt !== 'string'
+    ) {
+      return [];
+    }
+    return [{ ...summary, favoritedAt: item.favoritedAt }];
+  });
+}
+
 type FavoritesProviderProps = {
   children: ReactNode;
 };
 
 export function FavoritesProvider({ children }: FavoritesProviderProps) {
-  const [favorites, setFavorites] = useState<FavoriteMovie[]>([]);
+  const { user } = useAuth();
+  const {
+    items: favorites,
+    isLoading,
+    initializationError,
+    retryInitialization,
+    update,
+  } = usePersistentList(
+    user ? `${FAVORITES_STORAGE_KEY}:${user.id}` : null,
+    parseFavorites,
+  );
 
   const isFavorite = useCallback(
     (movieId: number) => favorites.some((movie) => movie.id === movieId),
     [favorites],
   );
 
-  const toggleFavorite = useCallback(async (movie: MovieSummary) => {
-    setFavorites((current) => {
-      if (current.some((item) => item.id === movie.id)) {
-        return current.filter((item) => item.id !== movie.id);
-      }
-      return [
-        { ...toMovieSummary(movie), favoritedAt: new Date().toISOString() },
-        ...current,
-      ];
-    });
-  }, []);
+  const toggleFavorite = useCallback(
+    (movie: MovieSummary) =>
+      update((current) => {
+        if (current.some((item) => item.id === movie.id)) {
+          return current.filter((item) => item.id !== movie.id);
+        }
+        return [
+          { ...toMovieSummary(movie), favoritedAt: new Date().toISOString() },
+          ...current,
+        ];
+      }),
+    [update],
+  );
 
-  const removeFavorite = useCallback(async (movieId: number) => {
-    setFavorites((current) => current.filter((item) => item.id !== movieId));
-  }, []);
+  const removeFavorite = useCallback(
+    (movieId: number) =>
+      update((current) => current.filter((item) => item.id !== movieId)),
+    [update],
+  );
 
   const value = useMemo<FavoritesContextValue>(
     () => ({
       favorites,
-      isLoading: false,
-      initializationError: null,
+      isLoading,
+      initializationError,
+      retryInitialization,
       isFavorite,
       toggleFavorite,
       removeFavorite,
     }),
-    [favorites, isFavorite, toggleFavorite, removeFavorite],
+    [
+      favorites,
+      isLoading,
+      initializationError,
+      retryInitialization,
+      isFavorite,
+      toggleFavorite,
+      removeFavorite,
+    ],
   );
 
   return (
