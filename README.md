@@ -80,15 +80,34 @@ Os botões não guardam estado próprio: eles consomem `useFavorites()` e
 | `useFavorites()` | `favorites`, `isFavorite`, `toggleFavorite`, `removeFavorite` |
 | `useWatched()` | `watched`, `isWatched`, `getRating`, `toggleWatched`, `setRating`, `clearRating` |
 
+Os dois hooks também expõem `isLoading`, `initializationError` e
+`retryInitialization`.
+
 Regras já embutidas: avaliar um filme também o marca como assistido, e
 desmarcar como assistido descarta a nota.
 
-> **Atenção:** `FavoritesContext.tsx` e `WatchedContext.tsx` são **stubs em
-> memória** — a lista é perdida ao fechar o aplicativo. A persistência com
-> AsyncStorage e as telas de favoritos/assistidos são do integrante 4. Como o
-> contrato acima já é o definitivo, basta trocar o armazenamento interno dos
-> dois providers: nenhuma tela precisa mudar. Cada arquivo tem no topo a lista
-> do que falta.
+## Favoritos, assistidos e persistência
+
+- `src/hooks/usePersistentList.ts`: hook que guarda uma lista no AsyncStorage.
+  Lê a lista salva em um `useEffect` quando o usuário entra, informa
+  `isLoading` enquanto lê e grava cada alteração antes de atualizar a tela.
+  As gravações entram em fila, então dois toques seguidos não se sobrescrevem;
+- `src/contexts/FavoritesContext.tsx` e `src/contexts/WatchedContext.tsx`:
+  usam o hook acima e validam o JSON lido (itens inválidos são descartados, e
+  notas fora de 1 a 5 viram "sem nota");
+- `src/screens/FavoritesScreen.tsx` e `src/screens/WatchedScreen.tsx`: grades
+  com o `MovieCard`, estado de carregamento, erro com "Tentar novamente" e
+  estado vazio (`ListEmptyComponent`). Os assistidos mostram a nota pessoal;
+- `src/components/PersonalListsButtons.tsx`: botões ♥ e ✓ no cabeçalho do
+  catálogo, com a quantidade de filmes de cada lista;
+- `src/components/ListStatus.tsx`: mensagem central usada nos estados de
+  carregamento, erro e lista vazia.
+
+As listas são salvas por usuário (`@cinefiles/favorites-v1:<id>` e
+`@cinefiles/watched-v1:<id>`). Ao sair da conta, elas somem da tela; ao entrar
+de novo, voltam. Como todas as telas leem o mesmo Context, favoritar, marcar
+como assistido ou dar nota em uma tela muda as outras na hora, incluindo o ♥
+nos cards do catálogo.
 
 ## Autenticação de demonstração
 
