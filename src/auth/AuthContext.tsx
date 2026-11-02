@@ -9,6 +9,13 @@ import {
   useMemo,
   useState,
 } from 'react';
+import { isFirebaseConfigured } from '../services/firebase';
+import {
+  firebaseLogin,
+  firebaseLogout,
+  firebaseRegister,
+  subscribeToFirebaseUser,
+} from './firebaseAuth';
 
 export type AuthUser = {
   id: string;
@@ -133,8 +140,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
   );
 
   const retryInitialization = useCallback(async () => {
-    setIsLoading(true);
     setInitializationError(null);
+    if (isFirebaseConfigured) {
+      return;
+    }
+    setIsLoading(true);
     try {
       const storedSession = await AsyncStorage.getItem(SESSION_STORAGE_KEY);
       setUser(parseSession(storedSession));
@@ -146,11 +156,32 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }, []);
 
   useEffect(() => {
-    void retryInitialization();
+    if (!isFirebaseConfigured) {
+      void retryInitialization();
+      return;
+    }
+
+    return subscribeToFirebaseUser(
+      (firebaseUser) => {
+        setUser((current) =>
+          current && current.id === firebaseUser?.id ? current : firebaseUser,
+        );
+        setIsLoading(false);
+      },
+      (error) => {
+        setInitializationError(error.message);
+        setIsLoading(false);
+      },
+    );
   }, [retryInitialization]);
 
   const login = useCallback(async (email: string, password: string) => {
     validateCredentials(email, password);
+    if (isFirebaseConfigured) {
+      setUser(await firebaseLogin(normalizeEmail(email), password));
+      return;
+    }
+
     const accounts = parseAccounts(
       await AsyncStorage.getItem(ACCOUNTS_STORAGE_KEY),
     );
@@ -180,6 +211,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
         throw new Error('Informe seu nome (pelo menos 2 caracteres).');
       }
       validateCredentials(email, password);
+      if (isFirebaseConfigured) {
+        setUser(
+          await firebaseRegister(cleanName, normalizeEmail(email), password),
+        );
+        return;
+      }
 
       const accounts = parseAccounts(
         await AsyncStorage.getItem(ACCOUNTS_STORAGE_KEY),
@@ -216,6 +253,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
   );
 
   const logout = useCallback(async () => {
+    if (isFirebaseConfigured) {
+      await firebaseLogout();
+      setUser(null);
+      return;
+    }
+
     await AsyncStorage.removeItem(SESSION_STORAGE_KEY);
     setUser(null);
   }, []);
