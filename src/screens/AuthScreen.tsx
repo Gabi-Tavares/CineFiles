@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { useAuth } from '../auth/AuthContext';
 import { RootStackParamList } from '../navigation/RootNavigator';
+import { isFirebaseConfigured } from '../services/firebase';
 
 type AuthScreenProps = NativeStackScreenProps<
   RootStackParamList,
@@ -187,7 +188,9 @@ export function AuthScreen({ navigation, route }: AuthScreenProps) {
             </Pressable>
           </View>
           <Text style={styles.demoNote}>
-            Conta de demonstração salva somente neste dispositivo.
+            {isFirebaseConfigured
+              ? 'Sua conta e suas listas ficam salvas na nuvem.'
+              : 'Conta de demonstração salva somente neste dispositivo.'}
           </Text>
         </View>
       </ScrollView>
