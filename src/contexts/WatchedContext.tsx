@@ -1,30 +1,17 @@
-/**
- * STUB — responsabilidade do integrante 4 (RF05/RF06).
- *
- * Mesma situação do `FavoritesContext`: o contrato público já é o definitivo e
- * só o armazenamento é provisório (memória). O que falta fazer aqui:
- *
- *   1. carregar `WATCHED_STORAGE_KEY` em um `useEffect` inicial, alimentando
- *      `isLoading` e `initializationError`;
- *   2. validar o JSON lido, descartando notas fora da faixa 1–5 com
- *      `isValidRating`;
- *   3. gravar com `AsyncStorage.setItem` em `toggleWatched`, `setRating` e
- *      `clearRating`, antes de atualizar o estado.
- *
- * Regra de negócio já embutida: avaliar um filme implica marcá-lo como
- * assistido, e desmarcar como assistido descarta a nota.
- */
 import {
   createContext,
   ReactNode,
   useCallback,
   useContext,
   useMemo,
-  useState,
 } from 'react';
+import { useAuth } from '../auth/AuthContext';
+import { usePersistentList } from '../hooks/usePersistentList';
 import {
   assertValidRating,
+  isValidRating,
   MovieSummary,
+  parseMovieSummary,
   toMovieSummary,
   WatchedMovie,
 } from './movieCollection';
@@ -35,6 +22,7 @@ export type WatchedContextValue = {
   watched: WatchedMovie[];
   isLoading: boolean;
   initializationError: string | null;
+  retryInitialization: () => void;
   isWatched: (movieId: number) => boolean;
   getRating: (movieId: number) => number | null;
   toggleWatched: (movie: MovieSummary) => Promise<void>;
@@ -44,12 +32,55 @@ export type WatchedContextValue = {
 
 const WatchedContext = createContext<WatchedContextValue | undefined>(undefined);
 
+function parseWatched(value: string | null): WatchedMovie[] {
+  if (value === null) {
+    return [];
+  }
+
+  const parsed: unknown = JSON.parse(value);
+  if (!Array.isArray(parsed)) {
+    throw new Error(
+      'Os filmes assistidos salvos estão inválidos neste dispositivo.',
+    );
+  }
+
+  return parsed.flatMap((item: unknown): WatchedMovie[] => {
+    const summary = parseMovieSummary(item);
+    if (
+      summary === null ||
+      typeof item !== 'object' ||
+      item === null ||
+      !('watchedAt' in item) ||
+      typeof item.watchedAt !== 'string'
+    ) {
+      return [];
+    }
+    const rating =
+      'rating' in item &&
+      typeof item.rating === 'number' &&
+      isValidRating(item.rating)
+        ? item.rating
+        : null;
+    return [{ ...summary, watchedAt: item.watchedAt, rating }];
+  });
+}
+
 type WatchedProviderProps = {
   children: ReactNode;
 };
 
 export function WatchedProvider({ children }: WatchedProviderProps) {
-  const [watched, setWatched] = useState<WatchedMovie[]>([]);
+  const { user } = useAuth();
+  const {
+    items: watched,
+    isLoading,
+    initializationError,
+    retryInitialization,
+    update,
+  } = usePersistentList(
+    user ? `${WATCHED_STORAGE_KEY}:${user.id}` : null,
+    parseWatched,
+  );
 
   const isWatched = useCallback(
     (movieId: number) => watched.some((movie) => movie.id === movieId),
@@ -62,61 +93,79 @@ export function WatchedProvider({ children }: WatchedProviderProps) {
     [watched],
   );
 
-  const toggleWatched = useCallback(async (movie: MovieSummary) => {
-    setWatched((current) => {
-      if (current.some((item) => item.id === movie.id)) {
-        return current.filter((item) => item.id !== movie.id);
-      }
-      return [
-        {
-          ...toMovieSummary(movie),
-          watchedAt: new Date().toISOString(),
-          rating: null,
-        },
-        ...current,
-      ];
-    });
-  }, []);
+  const toggleWatched = useCallback(
+    (movie: MovieSummary) =>
+      update((current) => {
+        if (current.some((item) => item.id === movie.id)) {
+          return current.filter((item) => item.id !== movie.id);
+        }
+        return [
+          {
+            ...toMovieSummary(movie),
+            watchedAt: new Date().toISOString(),
+            rating: null,
+          },
+          ...current,
+        ];
+      }),
+    [update],
+  );
 
-  const setRating = useCallback(async (movie: MovieSummary, rating: number) => {
-    assertValidRating(rating);
-    setWatched((current) => {
-      if (current.some((item) => item.id === movie.id)) {
-        return current.map((item) =>
-          item.id === movie.id ? { ...item, rating } : item,
-        );
-      }
-      return [
-        {
-          ...toMovieSummary(movie),
-          watchedAt: new Date().toISOString(),
-          rating,
-        },
-        ...current,
-      ];
-    });
-  }, []);
+  const setRating = useCallback(
+    async (movie: MovieSummary, rating: number) => {
+      assertValidRating(rating);
+      await update((current) => {
+        if (current.some((item) => item.id === movie.id)) {
+          return current.map((item) =>
+            item.id === movie.id ? { ...item, rating } : item,
+          );
+        }
+        return [
+          {
+            ...toMovieSummary(movie),
+            watchedAt: new Date().toISOString(),
+            rating,
+          },
+          ...current,
+        ];
+      });
+    },
+    [update],
+  );
 
-  const clearRating = useCallback(async (movieId: number) => {
-    setWatched((current) =>
-      current.map((item) =>
-        item.id === movieId ? { ...item, rating: null } : item,
+  const clearRating = useCallback(
+    (movieId: number) =>
+      update((current) =>
+        current.map((item) =>
+          item.id === movieId ? { ...item, rating: null } : item,
+        ),
       ),
-    );
-  }, []);
+    [update],
+  );
 
   const value = useMemo<WatchedContextValue>(
     () => ({
       watched,
-      isLoading: false,
-      initializationError: null,
+      isLoading,
+      initializationError,
+      retryInitialization,
       isWatched,
       getRating,
       toggleWatched,
       setRating,
       clearRating,
     }),
-    [watched, isWatched, getRating, toggleWatched, setRating, clearRating],
+    [
+      watched,
+      isLoading,
+      initializationError,
+      retryInitialization,
+      isWatched,
+      getRating,
+      toggleWatched,
+      setRating,
+      clearRating,
+    ],
   );
 
   return (
