@@ -11,9 +11,9 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { Movie } from '../api/movieApi';
 import { useAuth } from '../auth/AuthContext';
-import { MovieCard } from '../components/MovieCard';
+import { MovieCard, MovieCardMovie } from '../components/MovieCard';
+import { useFavorites } from '../contexts/FavoritesContext';
 import { useMovieCatalog } from '../hooks/useMovieCatalog';
 import { RootStackParamList } from '../navigation/RootNavigator';
 
@@ -23,6 +23,7 @@ const SEARCH_DEBOUNCE_MS = 450;
 
 export function HomeScreen({ navigation }: HomeScreenProps) {
   const { user, logout } = useAuth();
+  const { favorites, isFavorite } = useFavorites();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [searchText, setSearchText] = useState('');
   const [query, setQuery] = useState('');
@@ -71,7 +72,7 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
   }
 
   const openMovieDetails = useCallback(
-    (movie: Movie) => {
+    (movie: MovieCardMovie) => {
       navigation.navigate('MovieDetails', {
         movieId: movie.id,
         title: movie.title,
@@ -194,6 +195,7 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
         columnWrapperStyle={styles.row}
         contentContainerStyle={styles.listContent}
         data={movies}
+        extraData={favorites}
         initialNumToRender={8}
         keyboardDismissMode="on-drag"
         keyboardShouldPersistTaps="handled"
@@ -272,7 +274,11 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
         refreshing={isRefreshing}
         renderItem={({ item }) => (
           <View style={styles.cardColumn}>
-            <MovieCard movie={item} onPress={openMovieDetails} />
+            <MovieCard
+              isFavorite={isFavorite(item.id)}
+              movie={item}
+              onPress={openMovieDetails}
+            />
           </View>
         )}
         showsVerticalScrollIndicator={false}

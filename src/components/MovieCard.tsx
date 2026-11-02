@@ -8,12 +8,22 @@ import {
 } from 'react-native';
 import { getPosterUrl, Movie } from '../api/movieApi';
 
+export type MovieCardMovie = Pick<
+  Movie,
+  'id' | 'title' | 'poster_path' | 'release_date' | 'vote_average' | 'vote_count'
+>;
+
 type MovieCardProps = {
-  movie: Movie;
-  onPress?: (movie: Movie) => void;
+  movie: MovieCardMovie;
+  isFavorite?: boolean;
+  onPress?: (movie: MovieCardMovie) => void;
 };
 
-function MovieCardComponent({ movie, onPress }: MovieCardProps) {
+function MovieCardComponent({
+  movie,
+  isFavorite = false,
+  onPress,
+}: MovieCardProps) {
   const [imageFailed, setImageFailed] = useState(false);
   const posterUrl = getPosterUrl(movie.poster_path);
   const releaseYear = movie.release_date?.slice(0, 4) || 'Sem data';
@@ -43,6 +53,12 @@ function MovieCardComponent({ movie, onPress }: MovieCardProps) {
         </View>
       )}
 
+      {isFavorite && (
+        <View style={styles.favoriteBadge}>
+          <Text style={styles.favoriteIcon}>♥</Text>
+        </View>
+      )}
+
       <View style={styles.content}>
         <Text numberOfLines={2} style={styles.title}>
           {movie.title}
@@ -55,7 +71,9 @@ function MovieCardComponent({ movie, onPress }: MovieCardProps) {
     </>
   );
 
-  const accessibilityLabel = `${movie.title}, ${releaseYear}, nota ${rating}`;
+  const accessibilityLabel = `${movie.title}, ${releaseYear}, nota ${rating}${
+    isFavorite ? ', favorito' : ''
+  }`;
 
   if (!onPress) {
     return (
@@ -108,6 +126,18 @@ const styles = StyleSheet.create({
     marginTop: 7,
     textAlign: 'center',
   },
+  favoriteBadge: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(16, 18, 27, 0.82)',
+    borderRadius: 16,
+    height: 32,
+    justifyContent: 'center',
+    position: 'absolute',
+    right: 8,
+    top: 8,
+    width: 32,
+  },
+  favoriteIcon: { color: '#FF6B81', fontSize: 16, lineHeight: 19 },
   content: { minHeight: 86, padding: 11 },
   title: { color: '#F6F4EF', fontSize: 14, fontWeight: '700', lineHeight: 19 },
   metadata: {
