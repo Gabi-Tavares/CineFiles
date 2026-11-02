@@ -2,6 +2,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useAuth } from '../auth/AuthContext';
 import { AuthScreen } from '../screens/AuthScreen';
+import { FavoritesScreen } from '../screens/FavoritesScreen';
 import { HomeScreen } from '../screens/HomeScreen';
 import { MovieDetailsScreen } from '../screens/MovieDetailsScreen';
 
@@ -10,6 +11,7 @@ export type RootStackParamList = {
   Register: undefined;
   Home: undefined;
   MovieDetails: { movieId: number; title?: string };
+  Favorites: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -64,6 +66,11 @@ export function RootNavigator() {
             name="MovieDetails"
             component={MovieDetailsScreen}
             options={{ title: 'Detalhes do filme', headerBackTitle: 'Catálogo' }}
+          />
+          <Stack.Screen
+            name="Favorites"
+            component={FavoritesScreen}
+            options={{ title: 'Meus favoritos', headerBackTitle: 'Catálogo' }}
           />
         </>
       ) : (
