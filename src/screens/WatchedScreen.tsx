@@ -65,7 +65,7 @@ export function WatchedScreen({ navigation }: WatchedScreenProps) {
             actionLabel="Explorar o catálogo"
             icon="✓"
             message="Abra um filme e toque em Assistido ou dê uma nota para ele aparecer aqui."
-            onAction={() => navigation.navigate('Home')}
+            onAction={() => navigation.popTo('Home')}
             title="Nenhum filme assistido ainda"
           />
         }

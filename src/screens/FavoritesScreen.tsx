@@ -59,7 +59,7 @@ export function FavoritesScreen({ navigation }: FavoritesScreenProps) {
             actionLabel="Explorar o catálogo"
             icon="♡"
             message="Abra um filme e toque em Favoritar para guardá-lo aqui."
-            onAction={() => navigation.navigate('Home')}
+            onAction={() => navigation.popTo('Home')}
             title="Você ainda não tem favoritos"
           />
         }
