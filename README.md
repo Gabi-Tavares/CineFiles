@@ -122,4 +122,38 @@ O `AuthProvider` fornece `user`, `login`, `register` e `logout` por meio do hook
 o aplicativo conforme a sessão. A tela inicial autenticada é um ponto de
 integração para o catálogo.
 
+## Nuvem com Firebase (bônus)
+
+Com as variáveis `EXPO_PUBLIC_FIREBASE_*` preenchidas no `.env.local`, o app
+passa a usar o Firebase:
+
+- `src/services/firebase.ts`: inicia o Firebase e mantém a sessão do Firebase
+  Auth salva no AsyncStorage;
+- `src/auth/firebaseAuth.ts`: cadastro, login e logout com e-mail e senha no
+  Firebase Auth, com as mensagens de erro em português. O `AuthContext` usa
+  estas funções quando o Firebase está configurado e o login local quando não
+  está;
+- `src/services/cloudLists.ts`: lê e grava cada lista no Firestore, em
+  `users/{uid}/lists/favorites` e `users/{uid}/lists/watched`.
+
+O AsyncStorage continua sendo a cópia local, então o app abre rápido e funciona
+sem internet. Cada cópia guarda a hora da última alteração (`updatedAt`). Ao
+entrar, o app compara as duas e fica com a mais recente; cada alteração é gravada
+no aparelho e depois enviada para a nuvem.
+
+Para criar o projeto: ative **E-mail/senha** em Authentication, crie o
+Firestore Database e publique estas regras, que deixam cada usuário ler e
+gravar apenas os próprios dados:
+
+```
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{userId}/{document=**} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+  }
+}
+```
+
 This product uses the TMDB API but is not endorsed or certified by TMDB.
