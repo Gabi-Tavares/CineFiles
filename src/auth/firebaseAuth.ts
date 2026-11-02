@@ -21,6 +21,10 @@ const FIREBASE_ERROR_MESSAGES: Record<string, string> = {
     'Sem conexão com a internet. Verifique e tente novamente.',
   'auth/too-many-requests':
     'Muitas tentativas seguidas. Aguarde um pouco e tente de novo.',
+  'auth/configuration-not-found':
+    'O login por e-mail não está ativado no Firebase deste projeto.',
+  'auth/operation-not-allowed':
+    'O login por e-mail não está ativado no Firebase deste projeto.',
 };
 
 function requireAuth() {
