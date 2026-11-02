@@ -1,6 +1,7 @@
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useAuth } from '../auth/AuthContext';
+import { PersonalListsButtons } from '../components/PersonalListsButtons';
 import { AuthScreen } from '../screens/AuthScreen';
 import { FavoritesScreen } from '../screens/FavoritesScreen';
 import { HomeScreen } from '../screens/HomeScreen';
@@ -62,7 +63,11 @@ export function RootNavigator() {
           <Stack.Screen
             name="Home"
             component={HomeScreen}
-            options={{ title: 'CineFiles', headerBackVisible: false }}
+            options={{
+              title: 'CineFiles',
+              headerBackVisible: false,
+              headerRight: () => <PersonalListsButtons />,
+            }}
           />
           <Stack.Screen
             name="MovieDetails"
