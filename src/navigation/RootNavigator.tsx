@@ -5,6 +5,7 @@ import { AuthScreen } from '../screens/AuthScreen';
 import { FavoritesScreen } from '../screens/FavoritesScreen';
 import { HomeScreen } from '../screens/HomeScreen';
 import { MovieDetailsScreen } from '../screens/MovieDetailsScreen';
+import { WatchedScreen } from '../screens/WatchedScreen';
 
 export type RootStackParamList = {
   Login: undefined;
@@ -12,6 +13,7 @@ export type RootStackParamList = {
   Home: undefined;
   MovieDetails: { movieId: number; title?: string };
   Favorites: undefined;
+  Watched: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -71,6 +73,11 @@ export function RootNavigator() {
             name="Favorites"
             component={FavoritesScreen}
             options={{ title: 'Meus favoritos', headerBackTitle: 'Catálogo' }}
+          />
+          <Stack.Screen
+            name="Watched"
+            component={WatchedScreen}
+            options={{ title: 'Filmes assistidos', headerBackTitle: 'Catálogo' }}
           />
         </>
       ) : (
