@@ -3,11 +3,13 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-nati
 import { useAuth } from '../auth/AuthContext';
 import { AuthScreen } from '../screens/AuthScreen';
 import { HomeScreen } from '../screens/HomeScreen';
+import { MovieDetailsScreen } from '../screens/MovieDetailsScreen';
 
 export type RootStackParamList = {
   Login: undefined;
   Register: undefined;
   Home: undefined;
+  MovieDetails: { movieId: number; title?: string };
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -52,11 +54,18 @@ export function RootNavigator() {
       }}
     >
       {user ? (
-        <Stack.Screen
-          name="Home"
-          component={HomeScreen}
-          options={{ title: 'CineFiles', headerBackVisible: false }}
-        />
+        <>
+          <Stack.Screen
+            name="Home"
+            component={HomeScreen}
+            options={{ title: 'CineFiles', headerBackVisible: false }}
+          />
+          <Stack.Screen
+            name="MovieDetails"
+            component={MovieDetailsScreen}
+            options={{ title: 'Detalhes do filme', headerBackTitle: 'Catálogo' }}
+          />
+        </>
       ) : (
         <>
           <Stack.Screen

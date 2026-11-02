@@ -1,5 +1,5 @@
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -11,6 +11,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { Movie } from '../api/movieApi';
 import { useAuth } from '../auth/AuthContext';
 import { MovieCard } from '../components/MovieCard';
 import { useMovieCatalog } from '../hooks/useMovieCatalog';
@@ -20,7 +21,7 @@ type HomeScreenProps = NativeStackScreenProps<RootStackParamList, 'Home'>;
 
 const SEARCH_DEBOUNCE_MS = 450;
 
-export function HomeScreen(_props: HomeScreenProps) {
+export function HomeScreen({ navigation }: HomeScreenProps) {
   const { user, logout } = useAuth();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [searchText, setSearchText] = useState('');
@@ -68,6 +69,16 @@ export function HomeScreen(_props: HomeScreenProps) {
       setIsLoggingOut(false);
     }
   }
+
+  const openMovieDetails = useCallback(
+    (movie: Movie) => {
+      navigation.navigate('MovieDetails', {
+        movieId: movie.id,
+        title: movie.title,
+      });
+    },
+    [navigation],
+  );
 
   function submitSearch() {
     Keyboard.dismiss();
@@ -261,7 +272,7 @@ export function HomeScreen(_props: HomeScreenProps) {
         refreshing={isRefreshing}
         renderItem={({ item }) => (
           <View style={styles.cardColumn}>
-            <MovieCard movie={item} />
+            <MovieCard movie={item} onPress={openMovieDetails} />
           </View>
         )}
         showsVerticalScrollIndicator={false}

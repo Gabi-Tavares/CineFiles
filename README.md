@@ -46,6 +46,50 @@ A parte do catálogo está organizada desta forma:
 O catálogo usa `/movie/popular` quando a busca está vazia e `/search/movie`
 quando há texto. Os resultados são solicitados em português do Brasil.
 
+## Detalhes e avaliação pessoal
+
+Ao tocar em um card do catálogo, o aplicativo navega para `MovieDetails` e
+busca o filme individualmente em `GET /movie/{id}`:
+
+- `src/api/movieDetailsApi.ts`: tipo `MovieDetails`, `fetchMovieDetails`,
+  `getBackdropUrl` e mensagens de erro (inclui o 404 de filme inexistente).
+  Reaproveita a instância do Axios exportada por `movieApi.ts`;
+- `src/hooks/useMovieDetails.ts`: requisição por ID com cancelamento via
+  `AbortController`, estados de carregamento, erro e nova tentativa;
+- `src/utils/movieText.ts`: limpeza de HTML da sinopse (tags e entidades),
+  duração em `2h 19min`, data em português e tradução da situação do filme;
+- `src/components/StarRating.tsx`: avaliação de 1 a 5 estrelas, acessível
+  como `radiogroup`;
+- `src/screens/MovieDetailsScreen.tsx`: pôster, fundo, título, slogan,
+  gêneros, duração, lançamento, sinopse e os botões de favoritar, marcar como
+  assistido e avaliar.
+
+A sinopse da TMDB chega em texto simples, sem HTML. A limpeza de
+`cleanHtmlText` é uma proteção: alguns títulos trazem sobras de marcação
+(`<br>`, `&amp;`, espaços duplicados) vindas de fontes externas.
+
+### Contratos dos Contexts
+
+Os botões não guardam estado próprio: eles consomem `useFavorites()` e
+`useWatched()`. Os tipos compartilhados ficam em
+`src/contexts/movieCollection.ts` (`MovieSummary`, `FavoriteMovie`,
+`WatchedMovie`, faixa de notas).
+
+| Hook | API pública |
+| --- | --- |
+| `useFavorites()` | `favorites`, `isFavorite`, `toggleFavorite`, `removeFavorite` |
+| `useWatched()` | `watched`, `isWatched`, `getRating`, `toggleWatched`, `setRating`, `clearRating` |
+
+Regras já embutidas: avaliar um filme também o marca como assistido, e
+desmarcar como assistido descarta a nota.
+
+> **Atenção:** `FavoritesContext.tsx` e `WatchedContext.tsx` são **stubs em
+> memória** — a lista é perdida ao fechar o aplicativo. A persistência com
+> AsyncStorage e as telas de favoritos/assistidos são do integrante 4. Como o
+> contrato acima já é o definitivo, basta trocar o armazenamento interno dos
+> dois providers: nenhuma tela precisa mudar. Cada arquivo tem no topo a lista
+> do que falta.
+
 ## Autenticação de demonstração
 
 O cadastro e o login desta versão são locais: as contas são salvas no
