@@ -7,6 +7,7 @@ import {
 } from 'react';
 import { useAuth } from '../auth/AuthContext';
 import { usePersistentList } from '../hooks/usePersistentList';
+import { isFirebaseConfigured } from '../services/firebase';
 import {
   assertValidRating,
   isValidRating,
@@ -79,6 +80,7 @@ export function WatchedProvider({ children }: WatchedProviderProps) {
     update,
   } = usePersistentList(
     user ? `${WATCHED_STORAGE_KEY}:${user.id}` : null,
+    user && isFirebaseConfigured ? `users/${user.id}/lists/watched` : null,
     parseWatched,
   );
 

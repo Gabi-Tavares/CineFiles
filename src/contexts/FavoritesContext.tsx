@@ -7,6 +7,7 @@ import {
 } from 'react';
 import { useAuth } from '../auth/AuthContext';
 import { usePersistentList } from '../hooks/usePersistentList';
+import { isFirebaseConfigured } from '../services/firebase';
 import {
   FavoriteMovie,
   MovieSummary,
@@ -69,6 +70,7 @@ export function FavoritesProvider({ children }: FavoritesProviderProps) {
     update,
   } = usePersistentList(
     user ? `${FAVORITES_STORAGE_KEY}:${user.id}` : null,
+    user && isFirebaseConfigured ? `users/${user.id}/lists/favorites` : null,
     parseFavorites,
   );
 

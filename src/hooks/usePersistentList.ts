@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { loadCloudList, saveCloudList } from '../services/cloudLists';
 
 type PersistentListState<T> = {
   key: string | null;
@@ -16,8 +17,55 @@ function getErrorMessage(error: unknown): string {
     : 'Não foi possível ler os dados salvos neste dispositivo.';
 }
 
+function warnCloudFailure(error: unknown) {
+  console.warn('Falha ao sincronizar com a nuvem:', getErrorMessage(error));
+}
+
+async function loadList<T>(
+  storageKey: string,
+  cloudPath: string | null,
+  parse: (value: string | null) => T[],
+): Promise<T[]> {
+  const updatedAtKey = `${storageKey}:updatedAt`;
+  const [stored, localUpdatedAt] = await Promise.all([
+    AsyncStorage.getItem(storageKey),
+    AsyncStorage.getItem(updatedAtKey),
+  ]);
+  const localItems = parse(stored);
+
+  if (cloudPath === null) {
+    return localItems;
+  }
+
+  try {
+    const cloud = await loadCloudList(cloudPath);
+
+    if (cloud && (localUpdatedAt === null || cloud.updatedAt >= localUpdatedAt)) {
+      const cloudItems = parse(JSON.stringify(cloud.items));
+      await AsyncStorage.multiSet([
+        [storageKey, JSON.stringify(cloudItems)],
+        [updatedAtKey, cloud.updatedAt],
+      ]);
+      return cloudItems;
+    }
+
+    if (stored !== null) {
+      await saveCloudList(
+        cloudPath,
+        localItems,
+        localUpdatedAt ?? new Date().toISOString(),
+      );
+    }
+  } catch (error) {
+    warnCloudFailure(error);
+  }
+
+  return localItems;
+}
+
 export function usePersistentList<T>(
   storageKey: string | null,
+  cloudPath: string | null,
   parse: (value: string | null) => T[],
 ) {
   const [state, setState] = useState<PersistentListState<T>>({
@@ -40,9 +88,8 @@ export function usePersistentList<T>(
     }
 
     let active = true;
-    AsyncStorage.getItem(storageKey)
-      .then((stored) => {
-        const items = parse(stored);
+    loadList(storageKey, cloudPath, parse)
+      .then((items) => {
         if (!active) {
           return;
         }
@@ -60,7 +107,7 @@ export function usePersistentList<T>(
     return () => {
       active = false;
     };
-  }, [storageKey, parse, attempt]);
+  }, [storageKey, cloudPath, parse, attempt]);
 
   const retryInitialization = useCallback(() => {
     setState({ key: null, items: [], error: null });
@@ -75,19 +122,27 @@ export function usePersistentList<T>(
         }
 
         const next = updater(itemsRef.current);
-        await AsyncStorage.setItem(storageKey, JSON.stringify(next));
+        const updatedAt = new Date().toISOString();
+        await AsyncStorage.multiSet([
+          [storageKey, JSON.stringify(next)],
+          [`${storageKey}:updatedAt`, updatedAt],
+        ]);
 
         if (readyKeyRef.current !== storageKey) {
           return;
         }
         itemsRef.current = next;
         setState({ key: storageKey, items: next, error: null });
+
+        if (cloudPath !== null) {
+          saveCloudList(cloudPath, next, updatedAt).catch(warnCloudFailure);
+        }
       });
 
       queueRef.current = task.catch(() => undefined);
       return task;
     },
-    [storageKey],
+    [storageKey, cloudPath],
   );
 
   const isCurrent = state.key === storageKey;
